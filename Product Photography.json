@@ -1,0 +1,823 @@
+{
+  "name": "Product Photography",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Product Photography Generator",
+        "formDescription": "Fill in the detail of the product and we'll send you a designed version of that product, suitable for marketing purpose",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Product Name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Product Description ",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Upload Product Photo",
+              "fieldType": "file",
+              "acceptFileTypes": ".jpg, .png",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Send Result to ",
+              "fieldType": "email",
+              "placeholder": "khoa@example.com"
+            },
+            {
+              "fieldLabel": "Do you want video or image only?",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Generate Video"
+                  },
+                  {
+                    "option": "Image only"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Instruction for video "
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        -592,
+        -256
+      ],
+      "id": "2cce6338-a919-4255-8dc1-6a1aaebaabf2",
+      "name": "On form submission",
+      "webhookId": "d34675b5-545a-4215-b5e0-5d73b787a992"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "gpt-4o"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        112,
+        -128
+      ],
+      "id": "21089582-d6ad-409e-9f2e-47715c2999c2",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "Nsx6NYXF6bHN4osV",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputDataFieldName": "Upload_Product_Photo",
+        "name": "Product_Photo",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1AwAAdELwtThvLD1EAXCC-pAxn07E28n2",
+          "mode": "list",
+          "cachedResultName": "AI Photo",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1AwAAdELwtThvLD1EAXCC-pAxn07E28n2"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -320,
+        -192
+      ],
+      "id": "22dbfe24-fede-4273-b197-8dfbb9ea7c4c",
+      "name": "Upload file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "Y0fK6ldBykgL7UMt",
+          "name": "Google Drive account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $('Upload file').item.json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -400,
+        112
+      ],
+      "id": "b0eb95ef-fbc2-41f5-a2d7-fae6b1d84f50",
+      "name": "Download file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "Y0fK6ldBykgL7UMt",
+          "name": "Google Drive account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/images/edits",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "image",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "prompt",
+              "value": "=### Text Source Matching (from OCR/Analysis)\n\n- You will be provided with a list of extracted text lines from the product image. These lines are accurate and clean.\n- Use only these extracted lines when placing text in the image description.\n- **Do not invent or simulate text** that isn’t in the provided list.\n- If a text element is part of the packaging design but is **not matched by any of the extracted lines**, treat it as unrecoverable:\n  - **Remove the text element entirely** from the scene (e.g., do not include ribbons, text strips, or boxes if they would otherwise be blank).\n- Do not attempt to approximate font styles or write filler content — only match exact extracted text.\n- Maintain the original placement and structure as seen in the input image (when provided), but only populate with verified lines.\n## General Image Guidelines\n\n- Use a **white studio background** with soft shadows and subtle lighting gradient. Include gentle tonal variation to imply surface depth (do not explicitly show a table).\n- Show the product at a **3/4 angle** or **slight diagonal tilt** to enhance realism and dimensionality.\n- **Do not add extra or duplicate items** (e.g., no second glass, bowl, or product pack) unless explicitly requested.\n- All elements must be **spaced realistically**, with natural shadows — avoid glued, floating, or overlapping appearances.\n- Apply **studio-quality lighting** with real-world highlights, soft bounce shadows, and proper contrast to mimic professional photography.\n\n## Text Handling Rules\n\n- **Preserve all original packaging text exactly** as it appears, especially in **Vietnamese, English, or Korean**.\n- If text is visible but uses a font that cannot be replicated, **replace it with a clean, legible equivalent** — but keep the **exact wording**.\n- If the system **cannot recognize or reconstruct the text accurately**, then:\n  - **Do not guess. Do not simulate. Do not render gibberish.**\n  - **Leave that text zone blank or remove it entirely**.\n- Never insert substitute characters, Latinized filler, or broken phonetics.\n- Do **not translate or paraphrase** the product name or label unless explicitly requested.\n- If a design element (e.g., text box, ribbon, banner, or label) is meant to display text, but no valid text can be rendered:\n  - **Remove the entire text element** from the image.\n  - Do not leave it empty or filled with fake-looking characters.\n\n{{ $json.output }}"
+            },
+            {
+              "name": "model",
+              "value": "gpt-image-1"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -208,
+        112
+      ],
+      "id": "1b5df167-e21a-4617-99bc-5ed0fe70ed36",
+      "name": "Create image",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "ZMHl6FC0ZXtbNrHA",
+          "name": "Bearer Auth account"
+        },
+        "httpHeaderAuth": {
+          "id": "0AFVXIjq1z8yxWpC",
+          "name": "Header Auth account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "data[0].b64_json",
+        "binaryPropertyName": "Edited_image",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        112
+      ],
+      "id": "aeee6886-8853-44d0-b2b3-9043eb11d010",
+      "name": "Convert to jpg"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f56b9480-1ddf-4331-b71a-daa4ac2cdb9e",
+              "leftValue": "={{ $json.data.approved }}",
+              "rightValue": "false",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -512,
+        2288
+      ],
+      "id": "67f5b054-b816-4a8f-95ad-dc055bf68bd5",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.imgbb.com/1/upload",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "key",
+              "value": "7a3da19dc2814578254923b7116d9af5"
+            },
+            {
+              "name": "name",
+              "value": "Wil Wintermelon img"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "image",
+              "inputDataFieldName": "=Edited_image"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        176,
+        112
+      ],
+      "id": "3da4a4c6-3b76-44b1-a3fa-952b11f923dc",
+      "name": "Upload to imgbb"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.imgbb.com/1/upload",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "key",
+              "value": "7a3da19dc2814578254923b7116d9af5"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "image",
+              "inputDataFieldName": "Upload_Product_Photo"
+            },
+            {
+              "name": "expiration",
+              "value": "60"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -320,
+        -400
+      ],
+      "id": "f18ed6fb-f53e-4801-8c49-c161540211e6",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "text": "=What product is shown in this image. Give answer follow this example: 'The image show a teabox in green. The name of the brand is Wil'\n\nAnd give me a list of all sentence you can identify in this image\n\nSeparate 2 parts of the query using &. just one &\n",
+        "imageUrls": "={{ $json.data.url }}",
+        "simplify": false,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -144,
+        -320
+      ],
+      "id": "a574c342-772f-4dd6-9642-2b7623e6c398",
+      "name": "Analyze image",
+      "credentials": {
+        "openAiApi": {
+          "id": "ANkRy28rHwsV5DJB",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nreturn items.map(item => {\n  const content = $input.first().json.choices[0].message.content || '';\n  const [part1, part2] = content.split('&').map(part => part.trim());\n\n  return {\n    json: {\n      ...item.json,\n      img_description: part1,\n      sentences: part2,\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        -320
+      ],
+      "id": "2cd8bb03-3cae-4105-b34c-1651638b77b0",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch"
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        576,
+        -176
+      ],
+      "id": "eddff4d8-1e77-4d15-a5d2-20bdc5c573c2",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Product Name: {{ $('On form submission').item.json['Product Name'] }} \nProduct Description: {{ $('On form submission').item.json['Product Description '] }}\nImage Description: {{ $json.img_description }}\nSentences found: {{ $json.sentences }}\n",
+        "options": {
+          "systemMessage": "# Overview  \nYou are an AI agent responsible for generating precise, photo-realistic image prompts for F&B product visualization. Your prompts will be used by a generative image model to create studio-style marketing visuals that mimic professional photography — not renders or 3D mockups. You must preserve packaging fidelity, enforce lighting and composition standards, and strictly follow text accuracy rules.\n\n## Context  \n- These visuals are used in Facebook ads, TikTok, and e-commerce platforms targeting Vietnamese consumers aged 20–30.  \n- All visuals must feel clean, premium, and realistic — based on professional product photo shoots.  \n- The visual reference standard features:\n  - A box at a 3/4 angle\n  - Clean white background with gradient light\n  - Shadow grounding that suggests a surface\n  - Photo-realistic lighting and textures\n\n## Instructions  \n1. Use the product name and optional description as your core input.  \n2. If a reference photo is available, analyze it for layout, shape, color, and visible text — **not environment**.  \n3. Compose a visual prompt using the rules below:\n\n### Visual Composition Rules  \n- Show the product at a **3/4 angle** or **slightly tilted front view** — never front-facing.  \n- Use a **clean white studio background** with:\n  - **Soft, realistic drop shadows**\n  - **Lighting gradient or tonal variation** to imply a surface (no flat white)\n  - **Depth that grounds the product** without mentioning a “table”\n- Lighting should be **studio-quality** with realistic highlights and contrast.  \n- The product must look **photographed**, not rendered. Emphasize texture, edge lighting, and subtle imperfections.\n\n### Object and Layout Rules  \n- **Do not add extra objects, duplicate items, or floating props** unless specifically instructed.  \n- If the product design includes a food item (e.g., a glass of tea), it must remain part of the packaging.  \n  - Do **not** place real food or duplicate versions beside the box.  \n- All objects must be spaced naturally with **realistic shadow separation** to avoid a “glued” or composited look.\n\n### Text Rules  \n- **Preserve all original packaging text exactly** as it appears — especially in **Vietnamese, English, or Korean**.  \n- If text is in a foreign language and clearly readable, **copy it exactly**.  \n- **Never auto-generate text**. If any text cannot be rendered accurately:\n  - **Omit it entirely. Do not replace with gibberish or broken characters.**\n- **Do not translate or rename the product** unless explicitly instructed.\n\n### Product Styling  \n- Render product packaging and shape with full realism.  \n- If relevant, depict the beverage or food in a craveable way — glossy tea, icy condensation, steam, etc.  \n- Do not invent or duplicate props. All food elements must be from the **packaging design only**.\n\n### Branding & Design Fidelity  \n- Maintain original layout, logos, and branding with photographic clarity.  \n- Do **not invent, reword, rephrase, or change** the name, tagline, or layout.\n\n### Optional Overrides  \n- Only override the white background or add props if **explicitly instructed** (e.g., “show on a beach” or “add wooden spoon”).  \n- Only remove or translate text if the prompt directly calls for it.\n\n## Tools  \n- Product name (required)  \n- Product description (optional)  \n- Reference photo (optional, for structure and layout)\n\n## Example Prompt Output  \n\"Hyper-realistic studio photo of a green box labeled 'Trà Bí Đao Hạt Chia', positioned at a 3/4 angle. The box appears grounded with soft shadows and a subtle white background gradient suggesting surface depth. Lighting is bright and natural with soft contrast, revealing realistic cardboard texture. A single tea glass is shown only as part of the packaging design — no real glass added. The text on the packaging is preserved exactly in Vietnamese, with no added or fake characters. Scene is clean, minimal, premium, and photographically believable.\"\n\n## SOP (Standard Operating Procedure)  \n1. Lock the product name — no changes or translation.  \n2. Review reference photo for packaging shape and layout only.  \n3. Compose a prompt using photo-realistic language and lighting.  \n4. Specify background as white studio with tonal split.  \n5. Prevent any extra objects or mirrored duplicates.  \n6. Preserve all real, legible text. Exclude anything unreadable.  \n7. Emphasize realistic shadows, spacing, and depth.  \n8. Do not allow rendering-style output. Force photography style.\n\n## Final Notes  \n- **If the system cannot render real text, it must leave it out completely. No gibberish or filler.**  \n- **The product must appear grounded, dimensional, and lit like a real object in a studio.**  \n- **No floating visuals, overlapping artifacts, or textureless surfaces.**  \n- The result should closely mimic the lighting, depth, and quality of the original Trà Bí Đao Hạt Chia reference image.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.1,
+      "position": [
+        176,
+        -288
+      ],
+      "id": "4fac2d93-9a89-4c41-9d51-70839beff65a",
+      "name": "Image Prompt generator"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=\nProduct description: {{ $('On form submission').item.json['Product Description '] }}\nProduct type: F&B\n",
+        "options": {
+          "systemMessage": "# Overview  \nYou are a Video Prompt Generator AI. Your task is to create short, expressive, Runway-compatible video prompts for food & beverage product ads. These prompts will guide AI video generation tools like RunwayML Gen-2 to add effects, motion, and emotion to pre-rendered product images.\n\n## Context  \n- You receive a static product image and packaging text (in English, Vietnamese, German, or any detected language).\n- Your goal is to add motion, atmosphere, emotion, and call-to-action text through a vivid prompt.\n- The product image is pre-generated and should remain untouched — the video generator must build **around** it, not edit or recompose it.\n\n## Instructions  \nUse the provided data to generate a single paragraph scene prompt with the following components:\n\n1. **Scene Setup**  \n   - Describe the product placement (usually 3/4 angle on white studio background).\n   - Mention soft shadows or ambient gradient as needed.\n\n2. **Motion Effects**  \n   - Add 1–2 realistic, visually striking effects: splash, steam, floating fruit, light reflections, etc.\n\n3. **Emotional Focus**  \n   - Describe what the viewer should feel (e.g. cold refreshment, sweet indulgence, energizing fizz).\n\n4. **Call-to-Action Title**  \n   - Insert a short text overlay that could appear during the video (based on extracted packaging phrases or tone).\n\n5. **Hard Constraint – Do Not Edit Product Image**  \n   - At the end of every prompt, include this instruction:  \n     *\"Apply only motion, atmosphere, and text overlays. Do not alter the original product image, its layout, or label.\"*\n\n## Output Format  \nWrite a single paragraph video prompt that is:  \n- Descriptive  \n- Natural language  \n- Ready to paste into RunwayML  \n- Does not include bullet points or numbered lists\n\n## Language  \n- Match the detected language from packaging or extracted text.  \n- Do not translate or guess languages. Use only what was identified.\n\n## Example Output  \n\nA cinematic product ad featuring a box of \"Wil Trà Bí Đao Hạt Chia\" standing at a 3/4 angle on a clean white studio background with soft shadows. A splash of iced tea erupts upward with floating chia seeds and melon slices frozen in mid-air. Soft mist rises to enhance the cool, refreshing feel of the drink. The camera slowly zooms in as clean text fades in: “Pure refreshment.” Apply only motion, atmosphere, and text overlays. Do not alter the original product image, its layout, or label.\n\n## Final Notes  \n- Keep prompts short and cinematic.  \n- Product is always the visual hero.  \n- Never invent text or languages.  \n- Always preserve the product image as-is."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.1,
+      "position": [
+        -432,
+        2432
+      ],
+      "id": "28ee15f7-7eb3-4e70-83b6-6cd1424cdf11",
+      "name": "Video Prompt Gen"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "gpt-4o"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -464,
+        2624
+      ],
+      "id": "54321162-ed5d-42ab-9b43-8adcea8688a9",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "Nsx6NYXF6bHN4osV",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.dev.runwayml.com/v1/image_to_video",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer key_12c8069526d33eb4258dea69fc9752986fe9c2bbd068644fd04cb25e517109e3537fcd3564e99ea1c109e8d43736b58e8003e7157dde978ad4999bad0d4f7574"
+            },
+            {
+              "name": "X-Runway-Version",
+              "value": "2024-11-06"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n{\npromptImage: $('Upload to imgbb').item.json.data.url,\nseed: 4294967295,\nmodel: 'gen4_turbo',\npromptText: 'Create a highly professional marketing video from the provided product photo. Simulate a smooth, realistic 3D horizontal turntable rotation around the product, as if the product is slowly rotating in place. The movement should be continuous, slow, and elegant — no sudden pans, jerks, or camera cuts. Always keep the entire product fully in frame, centered, and clearly visible at all times. Avoid zooming in or cropping. Focus on a premium, clean, and modern aesthetic that feels suitable for commercial marketing materials. No flashy effects, transitions, or overlays — only a subtle, realistic 3D rotation that highlights the product in the most polished way possible.',\nduration: 5,\nratio: '1280:720',\ncontentModeration: {\npublicFigureThreshold: 'auto'\n}\n}\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -80,
+        2432
+      ],
+      "id": "5fc0bb16-13c4-4f2f-a77a-3e1d92c0e10e",
+      "name": "Generate Video",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "yFkLEL6JueDYhEMt",
+          "name": "Runway API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://api.dev.runwayml.com/v1/tasks/{{ $json.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Runway-Version",
+              "value": "2024-11-06"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        304,
+        2448
+      ],
+      "id": "8df06b34-8d6b-40f2-93ba-54643d6fa3bd",
+      "name": "Video ready?",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "yFkLEL6JueDYhEMt",
+          "name": "Runway API"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        672,
+        2592
+      ],
+      "id": "d44946b6-219e-4ccd-a157-770c9af7275a",
+      "name": "Wait",
+      "webhookId": "02399f28-3e4d-4f13-8ac5-bb17ca838c34"
+    },
+    {
+      "parameters": {
+        "amount": 40
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        128,
+        2432
+      ],
+      "id": "a4f69a88-7361-4818-85b0-76a0d24ac37a",
+      "name": "Wait1",
+      "webhookId": "7ed3a5f0-f53e-43c5-b7bd-2f04fa4aed7b"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d8ab9fb2-c86f-420c-9592-c1240c851f0a",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "RUNNING",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        544,
+        2432
+      ],
+      "id": "3789ee4d-6b14-46ac-a388-09c8afc85857",
+      "name": "If not ready"
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "sendTo": "pugngao11@gmail.com",
+        "subject": "Edited Image: Approval Required",
+        "message": "=The follow image has been edit. Should you approve the image, we will proceed to generate a video out of the image.\nThe image can be found in this link:\n{{ $json.data.url }}",
+        "approvalOptions": {
+          "values": {
+            "approvalType": "double"
+          }
+        },
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        352,
+        112
+      ],
+      "id": "2e167378-2a3f-4bb1-a5f0-ee3eacbc2bc5",
+      "name": "Send result",
+      "webhookId": "a18f5d1b-e5d1-47c5-9571-cada42b09a2b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "BiNuhZcmDSfeqcun",
+          "name": "Gmail account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Upload file",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Image Prompt generator",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload file": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file": {
+      "main": [
+        [
+          {
+            "node": "Create image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create image": {
+      "main": [
+        [
+          {
+            "node": "Convert to jpg",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to jpg": {
+      "main": [
+        [
+          {
+            "node": "Upload to imgbb",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [],
+        []
+      ]
+    },
+    "Upload to imgbb": {
+      "main": [
+        [
+          {
+            "node": "Send result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Analyze image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze image": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Image Prompt generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image Prompt generator": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Video Prompt Gen",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Video Prompt Gen": {
+      "main": [
+        [
+          {
+            "node": "Generate Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Video": {
+      "main": [
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Video ready?": {
+      "main": [
+        [
+          {
+            "node": "If not ready",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Video ready?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "Video ready?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If not ready": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send result": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d932c92a-8352-4c6b-bde3-3088fe0e3322",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "473df4957c7b111425fa1bedd16d6afc129e19aa0ab8d4a5b9391d55ba205d7c"
+  },
+  "id": "u0D3eXIA0fqAVPyh",
+  "tags": []
+}
